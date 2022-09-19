@@ -1,5 +1,5 @@
 import { Client, Intents, Message } from "discord.js";
-import { Collection } from "mongodb";
+import { Collection, Db } from "mongodb";
 import config from "./config.json";
 import { connectDatabase } from "./database/connectDatabase"
 
@@ -38,7 +38,18 @@ async function handleMessage(m: Message, collection: Collection) {
         m.channel.send("pong");
     }
     if(message === "add"){
-        collection.insertOne({"piss": "sheesh"})
+        collection.insertOne(
+            {"mapLink": "https://osu.ppy.sh/beatmapsets/896080#osu/1872396", "mapSlot": "DT1"}
+        );
+    }
+    if(message === "retrieve"){
+        
+        const doc = await collection.findOne({mapSlot: "DT1"});
+
+        const map = doc?.mapLink;
+
+        m.channel.send(map);
+
     }
     console.log(m.content);
 }

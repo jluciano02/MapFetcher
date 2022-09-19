@@ -1,5 +1,4 @@
 import { MongoClient, MongoClientOptions, ServerApiVersion } from "mongodb";
-import { Collection, connect, createConnection } from "mongoose"
 import { config } from "../config.json"
 
 export const connectDatabase = async () => {
