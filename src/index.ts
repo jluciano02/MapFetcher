@@ -1,7 +1,11 @@
 import { Client, Intents, Message } from "discord.js";
-import { Collection, Db } from "mongodb";
+import { Collection, Db} from "mongodb";
 import config from "./config.json";
 import { connectDatabase } from "./database/connectDatabase"
+import { connectOsu } from "./osu/connectOsu"
+import { v2 } from "osu-api-extended"
+import { Map } from "./maps.types"
+
 
 (async () => {
     const BOT = new Client({
@@ -14,22 +18,53 @@ import { connectDatabase } from "./database/connectDatabase"
     });
 
     const mongoCollection = await connectDatabase();
+    const osuTest = await connectOsu();
 
     BOT.on("ready", () => console.log("Connected to Discord!"));
     BOT.on("messageCreate", (m)=>handleMessage(m, mongoCollection));
 
-
-
-
-
-
-
-    
-
     await BOT.login(config.config.token);
   })();
 
-async function retrieveMap(slot: String, collection: Collection){
+// Get beatmap ID from a given beatmap link
+async function getMapID(map: String): Promise<number>{   
+    let mapArray = map.split("/");
+    let mapID = mapArray[mapArray.length - 1];
+
+    let mapIDNum = parseInt(mapID);
+
+    return mapIDNum;
+}
+
+// Add map to database from map link
+async function addMap(map: String, mapSlot: String, collection: Collection){
+
+    let mapID = await getMapID(map);
+    mapSlot = mapSlot.toUpperCase();
+
+    const mapData = await v2.beatmap.diff(mapID);
+
+    collection.insertOne({
+        "mapLink": map,
+        "mapSlot": mapSlot,
+        "mapID": mapID,
+        "difficulty": mapData.difficulty_rating,
+        "cs": mapData.cs,
+        "bpm": mapData.bpm,
+        "ar": mapData.ar
+    })
+}
+
+async function parsePool(){
+    // TODO
+}
+
+// Add maps to database from pool spreadsheet
+async function addPool(){
+    // TODO
+}
+
+async function fetchMap(slot: String, collection: Collection){
 
     let myMap;
     let mapLink;
@@ -55,33 +90,18 @@ async function handleMessage(m: Message, collection: Collection) {
     if(message === "ping"){
         m.channel.send("pong");
     }
-    if(message === "add"){
+    if(messageSplit[0] === "add"){
+        addMap(messageSplit[1], messageSplit[2], collection);
+        
+        /*
         collection.insertOne(
             {"mapLink": "https://osu.ppy.sh/beatmapsets/896080#osu/1872396", "mapSlot": "DT1"}
-        );
+        ); */
     }
-    if(message === "populate"){
-        const result = await collection.insertMany(
-            [
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1774194#osu/3632723", mapSlot: "NM1" },
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1633210#osu/3333669", mapSlot: "NM2" },
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1075607#osu/2250670", mapSlot: "NM1" },
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1276409#osu/2651915", mapSlot: "NM1" },
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1312054#osu/2719284", mapSlot: "NM2" },
-              { mapLink: "https://osu.ppy.sh/beatmapsets/1633220#osu/3333699", mapSlot: "NM3" },
-            ],
-          );
-    }
-    if(messageSplit[0] === "retrieve"){
+    if(messageSplit[0] === "fetch"){
         
-        const map = await retrieveMap(messageSplit[1], collection);
+        const map = await fetchMap(messageSplit[1], collection);
         m.channel.send(map);
-
-        // retrieveMap(messageSplit[1], collection);
-        /*
-        const doc = await collection.findOne({mapSlot: "DT1"});
-        const map = doc?.mapLink;
-        m.channel.send(map); */
 
     }
     if(message === "test"){
